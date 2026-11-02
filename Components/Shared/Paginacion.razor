@@ -1,0 +1,80 @@
+@if (TotalPaginas > 1)
+{
+    <nav class="d-flex
+                align-items-center
+                justify-content-center
+                gap-3
+                mt-4"
+         aria-label="Paginación de turnos">
+
+        <button type="button"
+                class="btn btn-outline-primary"
+                disabled="@(PaginaActual <= 1)"
+                @onclick="Anterior">
+
+            ← Anterior
+
+        </button>
+
+
+        <span>
+
+            Página
+
+            <strong>
+                @PaginaActual
+            </strong>
+
+            de
+
+            <strong>
+                @TotalPaginas
+            </strong>
+
+        </span>
+
+
+        <button type="button"
+                class="btn btn-outline-primary"
+                disabled="@(PaginaActual >= TotalPaginas)"
+                @onclick="Siguiente">
+
+            Siguiente →
+
+        </button>
+
+    </nav>
+}
+
+@code
+{
+    [Parameter]
+    public int PaginaActual
+        { get; set; }
+
+
+    [Parameter]
+    public int TotalPaginas
+        { get; set; }
+
+
+    [Parameter]
+    public EventCallback<int>
+        OnCambio { get; set; }
+
+
+    private Task Anterior()
+    {
+        return OnCambio.InvokeAsync(
+            PaginaActual - 1
+        );
+    }
+
+
+    private Task Siguiente()
+    {
+        return OnCambio.InvokeAsync(
+            PaginaActual + 1
+        );
+    }
+}

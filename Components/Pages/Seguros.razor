@@ -1,0 +1,268 @@
+@page "/seguros"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@using System.Security.Claims
+@using blazornacho.Models
+@using blazornacho.Services
+@inject ReclamoService ReclamoService
+
+<h2>¿Le preocupan los siniestros? ¡Adquiera nuestro seguro!</h2>
+<AlertError
+    Mensaje="@mensajeError"
+    OnCerrar="CerrarError" />
+
+<EditForm Model="solicitud"
+          FormName="formSeguros"
+          OnValidSubmit="EnviarSolicitud">
+    <DataAnnotationsValidator />
+
+    <label>Nombre completo</label>
+    <InputText class="form-control" @bind-Value="solicitud.Nombre" />
+    <ValidationMessage For="@(() => solicitud.Nombre)" />
+
+    <label>Correo electrónico</label>
+    <InputText class="form-control" @bind-Value="solicitud.Correo" />
+    <ValidationMessage For="@(() => solicitud.Correo)" />
+
+    <label>Teléfono</label>
+    <InputText class="form-control" @bind-Value="solicitud.Telefono" />
+    <ValidationMessage For="@(() => solicitud.Telefono)" />
+
+    <label>Seguro</label>
+    <InputText class="form-control" @bind-Value="solicitud.Seguro" />
+    <ValidationMessage For="@(() => solicitud.Seguro)" />
+
+    <label>Marca</label>
+    <InputText class="form-control" @bind-Value="solicitud.Marca" />
+    <ValidationMessage For="@(() => solicitud.Marca)" />
+
+    <label>Modelo</label>
+    <InputText class="form-control" @bind-Value="solicitud.Modelo" />
+    <ValidationMessage For="@(() => solicitud.Modelo)" />
+
+    <label>Patente</label>
+    <InputText class="form-control" @bind-Value="solicitud.Patente" />
+    <ValidationMessage For="@(() => solicitud.Patente)" />
+
+    <label>Número de siniestro</label>
+    <InputText class="form-control" @bind-Value="solicitud.Siniestro" />
+    <ValidationMessage For="@(() => solicitud.Siniestro)" />
+
+    <label>Mensaje</label>
+    <InputTextArea class="form-control" rows="4" @bind-Value="solicitud.Mensaje" />
+    <ValidationMessage For="@(() => solicitud.Mensaje)" />
+
+    <button type="submit">Enviar Solicitud</button>
+ </EditForm>
+
+@if (!string.IsNullOrWhiteSpace(mensaje))
+{
+    <div class="toast show">@mensaje</div>
+}
+
+<section class="fade-in historial-seguros">
+    <h2>Historial de Mensajes</h2>
+
+    @if (!historialSolicitudes.Any())
+    {
+        <p class="texto-vacio">Todavía no se enviaron solicitudes de seguro.</p>
+    }
+    else
+    {
+        <div class="historial-lista">
+            @foreach (var item in historialSolicitudes.OrderByDescending(x => x.FechaEnvio))
+            {
+                <div class="turno-item">
+                    <b>@item.Nombre</b>
+                    <p><strong>Correo:</strong> @item.Correo</p>
+                    <p><strong>Teléfono:</strong> @(string.IsNullOrWhiteSpace(item.Telefono) ? "No indicado" : item.Telefono)</p>
+                    <p><strong>Seguro:</strong> @item.Seguro</p>
+                    <p><strong>Vehículo:</strong> @item.Marca @item.Modelo</p>
+                    <p><strong>Patente:</strong> @(string.IsNullOrWhiteSpace(item.Patente) ? "No indicada" : item.Patente)</p>
+                    <p><strong>Número de siniestro:</strong> @(string.IsNullOrWhiteSpace(item.Siniestro) ? "No indicado" : item.Siniestro)</p>
+                    <p><strong>Mensaje:</strong> @(string.IsNullOrWhiteSpace(item.Mensaje) ? "Sin mensaje adicional" : item.Mensaje)</p>
+                    <small>Enviado el @item.FechaEnvio.ToString("dd/MM/yyyy HH:mm")</small>
+                </div>
+            }
+        </div>
+    }
+</section>
+
+@code {
+    private SeguroSolicitud solicitud = new();
+    private string mensaje = "";
+
+    private List<Reclamo> historialSolicitudes = new();
+
+    protected override async Task
+    OnInitializedAsync()
+{
+    AuthenticationState auth =
+        await AuthenticationStateTask;
+
+
+    string? idTexto =
+        auth.User.FindFirst(
+            ClaimTypes.NameIdentifier
+        )?.Value;
+
+
+    if (!long.TryParse(
+            idTexto,
+            out usuarioId))
+    {
+        mensajeError =
+            "No se pudo identificar al usuario.";
+
+        return;
+    }
+
+
+    CargarReclamos();
+}
+
+    private void CargarReclamos()
+{
+    mensajeError = null;
+
+    try
+    {
+        historialSolicitudes =
+            ReclamoService
+                .ObtenerTodos(
+                    usuarioId
+                );
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine(ex);
+
+        mensajeError =
+            "No se pudieron cargar las solicitudes de seguro.";
+    }
+}   
+   private void EnviarSolicitud()
+{
+    mensaje = "";
+
+    mensajeError = null;
+
+
+    Reclamo nuevoReclamo =
+        new()
+        {
+            Nombre =
+                solicitud.Nombre,
+
+            Correo =
+                solicitud.Correo,
+
+            Telefono =
+                solicitud.Telefono,
+
+            Seguro =
+                solicitud.Seguro,
+
+            Marca =
+                solicitud.Marca,
+
+            Modelo =
+                solicitud.Modelo,
+
+            Patente =
+                (solicitud.Patente ?? "")
+                    .ToUpperInvariant(),
+
+            Siniestro =
+                solicitud.Siniestro,
+
+            Mensaje =
+                solicitud.Mensaje,
+
+            FechaEnvio =
+                DateTime.Now,
+
+            UsuarioId =
+                usuarioId
+        };
+
+
+    try
+    {
+        ReclamoService.Agregar(
+            nuevoReclamo
+        );
+
+
+        mensaje =
+            "¡Solicitud enviada! Un asesor se comunicará contigo pronto.";
+
+
+        solicitud =
+            new SeguroSolicitud();
+
+
+        CargarReclamos();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine(ex);
+
+
+        mensajeError =
+            "No se pudo guardar la solicitud de seguro.";
+    }
+}
+
+    public class SeguroSolicitud
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Ingrese su nombre completo")]
+        [System.ComponentModel.DataAnnotations.MinLength(3, ErrorMessage = "Mínimo 3 caracteres y Solo letras y espacios")]
+        public string Nombre { get; set; } = "";
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Ingrese su correo")]
+        [System.ComponentModel.DataAnnotations.EmailAddress(ErrorMessage = "Correo inválido")]
+        public string Correo { get; set; } = "";
+
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^\d{6,15}$", ErrorMessage = "Ingrese solo números. Mínimo 6 dígitos")]
+        public string Telefono { get; set; } = "";
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Ingrese el tipo de seguro")]
+        [System.ComponentModel.DataAnnotations.MinLength(3, ErrorMessage = "Mínimo 3 caracteres")]
+        public string Seguro { get; set; } = "";
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Ingrese la marca")]
+        [System.ComponentModel.DataAnnotations.MinLength(2, ErrorMessage = "Mínimo 2 caracteres")]
+        public string Marca { get; set; } = "";
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Ingrese el modelo")]
+        [System.ComponentModel.DataAnnotations.MinLength(2, ErrorMessage = "Mínimo 2 caracteres")]
+        public string Modelo { get; set; } = "";
+
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^([A-Za-z]{3}\d{3}|[A-Za-z]{2}\d{3}[A-Za-z]{2})$", ErrorMessage = "Patente inválida. Ej: ABC123 o AB123CD")]
+        public string Patente { get; set; } = "";
+
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^\d*$", ErrorMessage = "El número de siniestro debe contener solo números")]
+        public string Siniestro { get; set; } = "";
+
+        public string Mensaje { get; set; } = "";
+
+        public DateTime FechaEnvio { get; set; } = DateTime.Now;
+    }
+
+    [CascadingParameter]
+    private Task<AuthenticationState>
+    AuthenticationStateTask
+    { get; set; } = default!;
+
+
+   private long usuarioId;
+
+   private string? mensajeError;
+
+   private void CerrarError()
+   {
+    mensajeError = null;
+   }
+}

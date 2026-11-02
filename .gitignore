@@ -1,0 +1,27 @@
+
+# Compilaciones y archivos generados por .NET
+**/bin/
+**/obj/
+**/publish/
+
+# Bases de datos locales y privadas
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Configuración y credenciales privadas
+.vs/
+.env
+.env.*
+*.user
+*.suo
+*.pfx
+*.publishsettings
+secrets.json
+
+# Logs
+*.log
+logs/

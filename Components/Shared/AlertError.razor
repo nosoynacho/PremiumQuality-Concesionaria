@@ -1,0 +1,38 @@
+@if (!string.IsNullOrWhiteSpace(Mensaje))
+{
+    <div class="alert alert-danger
+                d-flex
+                justify-content-between
+                align-items-center"
+         role="alert">
+
+        <span>
+            ⚠ @Mensaje
+        </span>
+
+        <button type="button"
+                class="btn-close"
+                aria-label="Cerrar"
+                @onclick="Cerrar">
+        </button>
+
+    </div>
+}
+
+@code
+{
+    [Parameter]
+    public string? Mensaje { get; set; }
+
+
+    [Parameter]
+    public EventCallback
+        OnCerrar { get; set; }
+
+
+    private Task Cerrar()
+    {
+        return OnCerrar
+            .InvokeAsync();
+    }
+}

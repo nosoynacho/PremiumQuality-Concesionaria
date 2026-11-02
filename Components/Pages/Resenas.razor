@@ -1,0 +1,516 @@
+@page "/resenas"
+
+@attribute [Authorize]
+
+@rendermode InteractiveServer
+
+@using System.Security.Claims
+@using blazornacho.Services
+@using blazornacho.Models
+
+@inject VehiculoService VehiculoService
+@inject ResenaService ResenaService
+
+
+<h2>
+    Reseñas de Clientes
+</h2>
+
+
+<AlertError
+    Mensaje="@mensajeError"
+    OnCerrar="CerrarError" />
+
+
+<p>
+    Seleccioná un vehículo para ver
+    y dejar reseñas:
+</p>
+
+
+<select
+    class="form-control"
+
+    @bind="vehiculoSeleccionadoId"
+
+    @bind:after="CargarResenas">
+
+    <option value="">
+        Elegir vehículo...
+    </option>
+
+
+    @foreach (Vehiculo auto in vehiculos)
+    {
+        <option value="@auto.Id">
+
+            @auto.Marca
+            @auto.Modelo
+
+        </option>
+    }
+
+</select>
+
+
+@if (
+    !string.IsNullOrWhiteSpace(
+        vehiculoSeleccionadoId
+    )
+    &&
+    VehiculoActual is not null
+)
+{
+    <section class="fade-in review-box">
+
+        <h3>
+
+            Reseñas de
+            @VehiculoActual.Marca
+            @VehiculoActual.Modelo
+
+        </h3>
+
+
+        @if (!resenasDelVehiculo.Any())
+        {
+            <div class="turno-item">
+
+                <b>
+                    Sin reseñas todavía
+                </b>
+
+                <p>
+                    Este vehículo todavía
+                    no tiene comentarios.
+                    Podés dejar la primera.
+                </p>
+
+            </div>
+        }
+        else
+        {
+            <div class="review-list">
+
+                @foreach (
+                    Resena resena
+                    in resenasDelVehiculo
+                )
+                {
+                    <div class="turno-item">
+
+                        <b>
+                            @MostrarEstrellas(
+                                resena.Puntaje
+                            )
+                        </b>
+
+                        <p>
+                            @resena.Comentario
+                        </p>
+
+                        
+                        <small>
+                        Publicado el
+                        @(resena.Fecha.ToString("dd/MM/yyyy HH:mm"))
+                        </small>
+
+
+
+                        @if (
+                            resena.UsuarioId ==
+                            usuarioId
+                        )
+                        {
+                            <div style=
+                                "margin-top:8px;">
+
+                                <button
+                                    type="button"
+
+                                    class="btn-outline"
+
+                                    @onclick=
+                                        "() => EliminarResena(resena)">
+
+                                    Eliminar
+
+                                </button>
+
+                            </div>
+                        }
+
+                    </div>
+                }
+
+            </div>
+        }
+
+
+        <h4>
+            Dejar una reseña
+        </h4>
+
+
+        <label>
+            Puntaje:
+        </label>
+
+
+        <select
+            class="form-control"
+            @bind="puntaje">
+
+            <option value="5">
+                ⭐⭐⭐⭐⭐
+            </option>
+
+            <option value="4">
+                ⭐⭐⭐⭐
+            </option>
+
+            <option value="3">
+                ⭐⭐⭐
+            </option>
+
+            <option value="2">
+                ⭐⭐
+            </option>
+
+            <option value="1">
+                ⭐
+            </option>
+
+        </select>
+
+
+        <label>
+            Comentario:
+        </label>
+
+
+        
+        <label for="comentario-resena">
+          Comentario
+        </label>
+
+        <textarea id="comentario-resena"
+          class="form-control"
+          rows="3"
+          maxlength="1000"
+          placeholder="Escribí tu opinión sobre el vehículo..."
+          @bind="comentario">
+        </textarea>
+
+        <small class="text-muted">
+          @comentario.Length / 1000 caracteres
+        </small>
+
+
+
+        @if (
+            !string.IsNullOrWhiteSpace(
+                errorComentario
+            )
+        )
+        {
+            <div class="error-text show">
+
+                @errorComentario
+
+            </div>
+        }
+
+
+        <button
+            type="button"
+
+            @onclick="EnviarResena">
+
+            Enviar reseña
+
+        </button>
+
+    </section>
+}
+
+
+@if (!string.IsNullOrWhiteSpace(mensaje))
+{
+    <div class="toast show">
+
+        @mensaje
+
+    </div>
+}
+
+
+@code
+{
+    [CascadingParameter]
+    private Task<AuthenticationState>
+        AuthenticationStateTask
+        { get; set; } = default!;
+
+
+    private List<Vehiculo> vehiculos =
+        new();
+
+
+    private List<Resena> resenasDelVehiculo =
+        new();
+
+
+    private string vehiculoSeleccionadoId =
+        "";
+
+
+    private int puntaje = 5;
+
+
+    private string comentario = "";
+
+
+    private string mensaje = "";
+
+
+    private string errorComentario = "";
+
+
+    private string? mensajeError;
+
+
+    private long usuarioId;
+
+
+    protected override async Task
+        OnInitializedAsync()
+    {
+        AuthenticationState auth =
+            await AuthenticationStateTask;
+
+
+        string? idTexto =
+            auth.User.FindFirst(
+                ClaimTypes.NameIdentifier
+            )?.Value;
+
+
+        if (!long.TryParse(
+                idTexto,
+                out usuarioId))
+        {
+            mensajeError =
+                "No se pudo identificar al usuario.";
+
+            return;
+        }
+
+
+        try
+        {
+            vehiculos =
+                VehiculoService
+                    .ObtenerTodos();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+
+            mensajeError =
+                "No se pudieron cargar los vehículos.";
+        }
+    }
+
+
+    private Vehiculo? VehiculoActual =>
+        vehiculos.FirstOrDefault(
+            x =>
+                x.Id ==
+                vehiculoSeleccionadoId
+        );
+
+
+    private void CargarResenas()
+    {
+        mensajeError = null;
+
+
+        if (
+            string.IsNullOrWhiteSpace(
+                vehiculoSeleccionadoId
+            )
+        )
+        {
+            resenasDelVehiculo.Clear();
+
+            return;
+        }
+
+
+        try
+        {
+            resenasDelVehiculo =
+                ResenaService
+                    .ObtenerPorVehiculo(
+                        vehiculoSeleccionadoId
+                    );
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+
+            mensajeError =
+                "No se pudieron cargar las reseñas.";
+        }
+    }
+
+
+    private void EnviarResena()
+    {
+        mensaje = "";
+
+        errorComentario = "";
+
+        mensajeError = null;
+
+
+        if (
+            string.IsNullOrWhiteSpace(
+                vehiculoSeleccionadoId
+            )
+        )
+        {
+            errorComentario =
+                "Seleccioná un vehículo antes de enviar una reseña.";
+
+            return;
+        }
+
+
+        if (
+            string.IsNullOrWhiteSpace(
+                comentario
+            )
+        )
+        {
+            errorComentario =
+                "Escribí un comentario antes de enviar la reseña.";
+
+            return;
+        }
+
+
+        
+        if (comentario.Trim().Length > 1000)
+        {
+            errorComentario =
+                "El comentario no puede superar los 1000 caracteres.";
+
+            return;
+        }
+
+
+
+        try
+        {
+            ResenaService.Agregar(
+                new Resena
+                {
+                    VehiculoId =
+                        vehiculoSeleccionadoId,
+
+                    UsuarioId =
+                        usuarioId,
+
+                    Puntaje =
+                        puntaje,
+
+                    Comentario =
+                        comentario.Trim()
+                }
+            );
+
+
+            comentario = "";
+
+            puntaje = 5;
+
+
+            mensaje =
+                "Reseña enviada correctamente.";
+
+
+            CargarResenas();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+
+            mensajeError =
+                "No se pudo guardar la reseña.";
+        }
+    }
+
+
+    private void EliminarResena(
+        Resena resena)
+    {
+        if (
+            resena.UsuarioId !=
+            usuarioId
+        )
+        {
+            mensajeError =
+                "No puede eliminar una reseña de otro usuario.";
+
+            return;
+        }
+
+
+        try
+        {
+            ResenaService
+                .Eliminar(resena);
+
+
+            mensaje =
+                "Reseña eliminada correctamente.";
+
+
+            CargarResenas();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+
+            mensajeError =
+                "No se pudo eliminar la reseña.";
+        }
+    }
+
+
+    private static string
+        MostrarEstrellas(
+            int cantidad)
+    {
+        cantidad =
+            Math.Clamp(
+                cantidad,
+                1,
+                5
+            );
+
+
+        return new string(
+            '⭐',
+            cantidad
+        );
+    }
+
+
+    private void CerrarError()
+    {
+        mensajeError = null;
+    }
+}

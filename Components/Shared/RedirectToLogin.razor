@@ -1,0 +1,35 @@
+@inject NavigationManager Navigation
+
+<p>
+    Redirigiendo al inicio de sesión...
+</p>
+
+@code
+{
+    protected override void OnInitialized()
+    {
+        string relative =
+            Navigation
+                .ToBaseRelativePath(
+                    Navigation.Uri
+                );
+
+        string returnUrl =
+            string.IsNullOrWhiteSpace(
+                relative
+            )
+                ? "/"
+                : $"/{relative}";
+
+        string destino =
+            "/iniciar-sesion?returnUrl=" +
+            Uri.EscapeDataString(
+                returnUrl
+            );
+
+        Navigation.NavigateTo(
+            destino,
+            forceLoad: true
+        );
+    }
+}

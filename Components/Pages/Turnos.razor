@@ -1,0 +1,733 @@
+@page "/turnos"
+
+@attribute [Authorize]
+
+@rendermode InteractiveServer
+
+@implements IDisposable
+
+@using System.Security.Claims
+@using blazornacho.Models
+@using blazornacho.Services
+
+@inject TurnosState TurnosState
+
+
+<section id="turnos"
+         class="fade-in">
+
+    <h2>
+        Agenda de Turnos
+    </h2>
+
+
+    <!-- ==========================================
+         ERRORES DE BASE DE DATOS
+         ========================================== -->
+
+    <AlertError
+        Mensaje="@mensajeError"
+        OnCerrar="CerrarError" />
+
+
+    <!-- ==========================================
+         FORMULARIO CRUD
+         ========================================== -->
+
+    <TurnoFormulario
+
+        Modelo="formulario"
+
+        Horarios="horarios"
+
+        ModoEdicion="EstaEditando"
+
+        ErrorGeneral="@errorTurno"
+
+        OnGuardar="GuardarTurno"
+
+        OnCancelar="CancelarEdicion" />
+
+
+    @if (!string.IsNullOrWhiteSpace(
+            mensajeTurno))
+    {
+        <div class="toast show">
+
+            @mensajeTurno
+
+        </div>
+    }
+
+
+    <hr />
+
+
+    <h3>
+        Mis turnos reservados
+    </h3>
+
+
+    <!-- ==========================================
+         BUSCADOR
+         ========================================== -->
+
+    <div class="row g-2 mb-3">
+
+        <div class="col-12 col-md-8">
+
+            <input
+                type="search"
+
+                class="form-control"
+
+                placeholder=
+                "Buscar por nombre, motivo u horario..."
+
+                @bind="textoBusqueda"
+
+                @bind:event="oninput" />
+
+        </div>
+
+
+        <div class="
+            col-12
+            col-md-4
+            d-flex
+            gap-2">
+
+            <button
+                type="button"
+
+                class="btn btn-primary"
+
+                @onclick="Buscar">
+
+                Buscar
+
+            </button>
+
+
+            <button
+                type="button"
+
+                class="
+                    btn
+                    btn-outline-secondary"
+
+                @onclick="LimpiarBusqueda">
+
+                Limpiar
+
+            </button>
+
+        </div>
+
+    </div>
+
+
+    @if (isLoading)
+    {
+        <div class="
+            d-flex
+            justify-content-center
+            my-4">
+
+            <div
+                class="
+                    spinner-border
+                    text-primary"
+                role="status">
+
+                <span class="visually-hidden">
+                    Cargando...
+                </span>
+
+            </div>
+
+        </div>
+    }
+    else
+    {
+        <p class="mb-3">
+
+            Registros encontrados:
+
+            <strong>
+                @TurnosState.TotalRegistros
+            </strong>
+
+        </p>
+
+
+        <TurnoLista
+
+            Turnos="TurnosState.Turnos"
+
+            OnEditar="EditarTurno"
+
+            OnEliminar="SolicitarEliminar" />
+
+
+        <Paginacion
+
+            PaginaActual=
+                "TurnosState.PaginaActual"
+
+            TotalPaginas=
+                "TurnosState.TotalPaginas"
+
+            OnCambio="CambiarPagina" />
+    }
+
+</section>
+
+
+<ConfirmacionModal
+
+    Visible=
+        "idTurnoAEliminar.HasValue"
+
+    Titulo="Eliminar turno"
+
+    Mensaje=
+        "¿Está seguro de que desea eliminar este turno?"
+
+    OnConfirmar="ConfirmarEliminar"
+
+    OnCancelar="CancelarEliminar" />
+
+
+@code
+{
+    [CascadingParameter]
+    private Task<AuthenticationState>
+        AuthenticationStateTask
+        { get; set; } = default!;
+
+
+    private const int TamanioPagina = 5;
+
+
+    private TurnoFormModel formulario =
+        CrearFormularioNuevo();
+
+
+    private List<string> horarios =
+        new();
+
+
+    private string errorTurno = "";
+
+    private string mensajeTurno = "";
+
+    private string? mensajeError;
+
+
+    private string textoBusqueda = "";
+
+
+    private long? idTurnoAEliminar;
+
+
+    private long usuarioId;
+
+
+    private bool isLoading;
+
+
+    private bool EstaEditando =>
+        formulario.Id > 0;
+
+
+    // ======================================================
+    // INICIALIZACIÓN
+    // ======================================================
+
+    protected override async Task
+        OnInitializedAsync()
+    {
+        GenerarHorarios();
+
+
+        TurnosState.OnChange +=
+            AlCambiarEstado;
+
+
+        AuthenticationState auth =
+            await AuthenticationStateTask;
+
+
+        string? idTexto =
+            auth.User.FindFirst(
+                ClaimTypes.NameIdentifier
+            )?.Value;
+
+
+        if (!long.TryParse(
+                idTexto,
+                out usuarioId))
+        {
+            mensajeError =
+                "No se pudo identificar al usuario actual.";
+
+            return;
+        }
+
+
+        CargarTurnos(1);
+    }
+
+
+    // ======================================================
+    // HORARIOS
+    // ======================================================
+
+    private void GenerarHorarios()
+    {
+        horarios.Clear();
+
+
+        TimeSpan inicio =
+            new(9, 0, 0);
+
+
+        TimeSpan fin =
+            new(18, 30, 0);
+
+
+        for (
+            TimeSpan horaActual =
+                inicio;
+
+            horaActual <= fin;
+
+            horaActual =
+                horaActual.Add(
+                    TimeSpan.FromMinutes(30)
+                )
+        )
+        {
+            horarios.Add(
+                horaActual.ToString(
+                    @"hh\:mm"
+                )
+            );
+        }
+    }
+
+
+    // ======================================================
+    // CARGAR TURNOS
+    // ======================================================
+
+    
+private void CargarTurnos(int pagina)
+{
+    isLoading = true;
+
+    mensajeError = null;
+
+    try
+    {
+        TurnosState.Cargar(
+            pagina,
+            TamanioPagina,
+            textoBusqueda,
+            usuarioId
+        );
+    }
+    catch (InvalidOperationException ex)
+    {
+        Console.WriteLine(
+            $"Error controlado al cargar turnos: {ex}"
+        );
+
+        mensajeError = ex.Message;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine(
+            $"Error inesperado al cargar turnos: {ex}"
+        );
+
+        mensajeError =
+            "No se pudieron cargar los turnos desde la base de datos.";
+    }
+    finally
+    {
+        // Se ejecuta tanto si la consulta
+        // funciona como si falla.
+        isLoading = false;
+    }
+}
+
+
+
+    // ======================================================
+    // BUSCAR
+    // ======================================================
+
+    private void Buscar()
+    {
+        CargarTurnos(1);
+    }
+
+
+    private void LimpiarBusqueda()
+    {
+        textoBusqueda = "";
+
+        CargarTurnos(1);
+    }
+
+
+    private void CambiarPagina(
+        int nuevaPagina)
+    {
+        CargarTurnos(
+            nuevaPagina
+        );
+    }
+
+
+    // ======================================================
+    // CREAR / ACTUALIZAR
+    // ======================================================
+
+    private void GuardarTurno()
+    {
+        errorTurno = "";
+
+        mensajeTurno = "";
+
+        mensajeError = null;
+
+
+        if (!formulario.Fecha.HasValue)
+        {
+            errorTurno =
+                "Seleccione una fecha válida.";
+
+            return;
+        }
+
+
+        DateTime fechaSeleccionada =
+            formulario.Fecha
+                .Value
+                .Date;
+
+
+        if (
+            fechaSeleccionada <
+            DateTime.Today
+        )
+        {
+            errorTurno =
+                "La fecha no puede ser anterior a hoy.";
+
+            return;
+        }
+
+
+        long? idExcluir =
+            EstaEditando
+                ? formulario.Id
+                : null;
+
+
+        try
+        {
+            if (
+                TurnosState.ExisteTurno(
+                    fechaSeleccionada,
+                    formulario.Hora,
+                    idExcluir
+                )
+            )
+            {
+                errorTurno =
+                    "Ya existe un turno para esa fecha y horario.";
+
+                return;
+            }
+
+
+            if (EstaEditando)
+            {
+                Turno? turnoExistente =
+                    TurnosState.Turnos
+                        .FirstOrDefault(
+                            x =>
+                                x.Id ==
+                                formulario.Id
+                        );
+
+
+                if (turnoExistente is null)
+                {
+                    errorTurno =
+                        "No se encontró el turno a editar.";
+
+                    return;
+                }
+
+
+                Turno actualizado =
+                    new()
+                    {
+                        Id =
+                            formulario.Id,
+
+                        Fecha =
+                            fechaSeleccionada,
+
+                        Hora =
+                            formulario.Hora,
+
+                        Nombre =
+                            formulario.Nombre
+                                .Trim(),
+
+                        Motivo =
+                            formulario.Motivo
+                                .Trim(),
+
+                        FechaReserva =
+                            turnoExistente
+                                .FechaReserva,
+
+                        UsuarioId =
+                            usuarioId
+                    };
+
+
+                TurnosState.Actualizar(
+                    actualizado
+                );
+
+
+                mensajeTurno =
+                    "Turno actualizado correctamente.";
+            }
+            else
+            {
+                Turno nuevo =
+                    new()
+                    {
+                        Fecha =
+                            fechaSeleccionada,
+
+                        Hora =
+                            formulario.Hora,
+
+                        Nombre =
+                            formulario.Nombre
+                                .Trim(),
+
+                        Motivo =
+                            formulario.Motivo
+                                .Trim(),
+
+                        FechaReserva =
+                            DateTime.Now,
+
+                        UsuarioId =
+                            usuarioId
+                    };
+
+
+                TurnosState.Agregar(
+                    nuevo
+                );
+
+
+                mensajeTurno =
+                    "¡Turno reservado correctamente!";
+            }
+
+
+            formulario =
+                CrearFormularioNuevo();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(
+                $"Error guardando turno: {ex}"
+            );
+
+
+            mensajeError =
+                "No se pudo guardar el turno. Intentá nuevamente.";
+        }
+    }
+
+
+    // ======================================================
+    // EDITAR
+    // ======================================================
+
+    private void EditarTurno(
+        long id)
+    {
+        Turno? turno =
+            TurnosState.Turnos
+                .FirstOrDefault(
+                    x => x.Id == id
+                );
+
+
+        if (turno is null)
+        {
+            mensajeError =
+                "No se encontró el turno seleccionado.";
+
+            return;
+        }
+
+
+        formulario =
+            new TurnoFormModel
+            {
+                Id =
+                    turno.Id,
+
+                Fecha =
+                    turno.Fecha,
+
+                Hora =
+                    turno.Hora,
+
+                Nombre =
+                    turno.Nombre,
+
+                Motivo =
+                    turno.Motivo
+            };
+
+
+        errorTurno = "";
+
+        mensajeTurno =
+            $"Editando turno #{turno.Id}";
+    }
+
+
+    private void CancelarEdicion()
+    {
+        formulario =
+            CrearFormularioNuevo();
+
+
+        errorTurno = "";
+
+        mensajeTurno =
+            "Edición cancelada.";
+    }
+
+
+    // ======================================================
+    // ELIMINAR
+    // ======================================================
+
+    private void SolicitarEliminar(
+        long id)
+    {
+        idTurnoAEliminar = id;
+    }
+
+
+    private void ConfirmarEliminar()
+    {
+        if (!idTurnoAEliminar.HasValue)
+        {
+            return;
+        }
+
+
+        long id =
+            idTurnoAEliminar.Value;
+
+
+        mensajeError = null;
+
+
+        try
+        {
+            TurnosState.Eliminar(id);
+
+
+            if (formulario.Id == id)
+            {
+                formulario =
+                    CrearFormularioNuevo();
+            }
+
+
+            mensajeTurno =
+                "Turno eliminado correctamente.";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(
+                $"Error eliminando turno: {ex}"
+            );
+
+
+            mensajeError =
+                "No se pudo eliminar el turno.";
+        }
+        finally
+        {
+            idTurnoAEliminar = null;
+        }
+    }
+
+
+    private void CancelarEliminar()
+    {
+        idTurnoAEliminar = null;
+    }
+
+
+    // ======================================================
+    // ERROR
+    // ======================================================
+
+    private void CerrarError()
+    {
+        mensajeError = null;
+    }
+
+
+    // ======================================================
+    // STATE SERVICE
+    // ======================================================
+
+    private void AlCambiarEstado()
+    {
+        _ = InvokeAsync(
+            StateHasChanged
+        );
+    }
+
+
+    private static TurnoFormModel
+        CrearFormularioNuevo()
+    {
+        return new TurnoFormModel
+        {
+            Fecha =
+                DateTime.Today
+        };
+    }
+
+
+    public void Dispose()
+    {
+        TurnosState.OnChange -=
+            AlCambiarEstado;
+    }
+}

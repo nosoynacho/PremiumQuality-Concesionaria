@@ -1,0 +1,151 @@
+
+@using blazornacho.Models
+
+<section class="turno-formulario"
+         aria-label="Formulario de turno">
+
+    <EditForm Model="Modelo"
+              FormName="formTurno"
+              OnValidSubmit="Guardar">
+
+        <DataAnnotationsValidator />
+
+        <div class="mb-3">
+
+            <label class="form-label">
+                <b>Seleccionar fecha:</b>
+            </label>
+
+            <InputDate class="form-control"
+                       lang="es-AR"
+                       @bind-Value="Modelo.Fecha" />
+
+            <ValidationMessage
+                For="@(() => Modelo.Fecha)" />
+
+        </div>
+
+        <div class="mb-3">
+
+            <label class="form-label">
+                <b>Seleccionar horario:</b>
+            </label>
+
+            <InputSelect class="form-control"
+                         @bind-Value="Modelo.Hora">
+
+                <option value="">
+                    Seleccione un horario
+                </option>
+
+                @foreach (string horario in Horarios)
+                {
+                    <option value="@horario">
+                        @horario
+                    </option>
+                }
+
+            </InputSelect>
+
+            <ValidationMessage
+                For="@(() => Modelo.Hora)" />
+
+        </div>
+
+        <div class="mb-3">
+
+            <label class="form-label">
+                <b>Nombre completo:</b>
+            </label>
+
+            <InputText class="form-control"
+                       placeholder="Ingrese su nombre"
+                       @bind-Value="Modelo.Nombre" />
+
+            <ValidationMessage
+                For="@(() => Modelo.Nombre)" />
+
+        </div>
+
+        <div class="mb-3">
+
+            <label class="form-label">
+                <b>Motivo del turno:</b>
+            </label>
+
+            <InputTextArea
+                class="form-control"
+                rows="3"
+                placeholder="Ej: Servicio técnico, consulta por vehículo, etc."
+                @bind-Value="Modelo.Motivo" />
+
+            <ValidationMessage
+                For="@(() => Modelo.Motivo)" />
+
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(ErrorGeneral))
+        {
+            <div class="error-text show mb-3">
+                @ErrorGeneral
+            </div>
+        }
+
+        <div class="acciones-formulario">
+
+            <button type="submit"
+                    class="btn btn-primary">
+
+                @(ModoEdicion
+                    ? "Guardar cambios"
+                    : "Reservar turno")
+
+            </button>
+
+            @if (ModoEdicion)
+            {
+                <button type="button"
+                        class="btn btn-secondary"
+                        @onclick="Cancelar">
+
+                    Cancelar edición
+
+                </button>
+            }
+
+        </div>
+
+    </EditForm>
+
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public TurnoFormModel Modelo { get; set; } = new();
+
+    [Parameter]
+    public IReadOnlyList<string> Horarios { get; set; }
+        = Array.Empty<string>();
+
+    [Parameter]
+    public bool ModoEdicion { get; set; }
+
+    [Parameter]
+    public string ErrorGeneral { get; set; } = "";
+
+    [Parameter]
+    public EventCallback OnGuardar { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancelar { get; set; }
+
+    private Task Guardar()
+    {
+        return OnGuardar.InvokeAsync();
+    }
+
+    private Task Cancelar()
+    {
+        return OnCancelar.InvokeAsync();
+    }
+}

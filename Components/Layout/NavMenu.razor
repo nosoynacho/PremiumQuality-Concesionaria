@@ -1,0 +1,198 @@
+﻿<header class="top-row ps-3 navbar navbar-dark">
+
+    <div class="container-fluid">
+
+        <a class="navbar-brand" href="">
+            Concesionaria
+        </a>
+
+    </div>
+
+</header>
+
+
+<input type="checkbox"
+       title="Navigation menu"
+       class="navbar-toggler" />
+
+
+<nav class="nav-scrollable"
+     aria-label="Navegación principal"
+     onclick="document.querySelector('.navbar-toggler').click()">
+
+    <ul class="flex-column nav-lista">
+
+        <!-- PÚBLICO -->
+
+        <li class="nav-item px-3">
+
+            <NavLink class="nav-link"
+                     href=""
+                     Match="NavLinkMatch.All">
+
+                🏠 Home
+
+            </NavLink>
+
+        </li>
+
+
+        <li class="nav-item px-3">
+
+            <NavLink class="nav-link"
+                     href="modelos">
+
+                🚗 Modelos
+
+            </NavLink>
+
+        </li>
+
+
+        <li class="nav-item px-3">
+
+            <NavLink class="nav-link"
+                     href="contacto">
+
+                📞 Contacto
+
+            </NavLink>
+
+        </li>
+
+
+        <AuthorizeView>
+
+            <!-- =================================
+                 USUARIO CON SESIÓN
+                 ================================= -->
+
+            <Authorized Context="authState">
+
+                <li class="nav-separator">
+                </li>
+
+
+                <li class="nav-user px-3">
+
+                    <span class="nav-user__label">
+                        Sesión iniciada
+                    </span>
+
+                    <strong>
+                        @authState.User.Identity?.Name
+                    </strong>
+
+                </li>
+
+
+                <li class="nav-item px-3">
+
+                    <NavLink class="nav-link"
+                             href="seguros">
+
+                        🛡️ Seguros
+
+                    </NavLink>
+
+                </li>
+
+
+                <li class="nav-item px-3">
+
+                    <NavLink class="nav-link"
+                             href="resenas">
+
+                        ⭐ Reseñas
+
+                    </NavLink>
+
+                </li>
+
+
+                <li class="nav-item px-3">
+
+                    <NavLink class="nav-link"
+                             href="turnos">
+
+                        📅 Turnos
+
+                    </NavLink>
+
+                </li>
+
+
+                <li class="nav-item px-3">
+
+                    <NavLink class="nav-link"
+                             href="mi-cuenta">
+
+                        👤 Mi cuenta
+
+                    </NavLink>
+
+                </li>
+
+
+                <li class="nav-item px-3">
+
+                    <form method="post"
+                          action="/auth/logout"
+                          class="nav-auth-form">
+
+                        <AntiforgeryToken />
+
+                        <button type="submit"
+                                class="nav-link nav-logout-button">
+
+                            🚪 Cerrar sesión
+
+                        </button>
+
+                    </form>
+
+                </li>
+
+            </Authorized>
+
+
+            <!-- =================================
+                 SIN SESIÓN
+                 ================================= -->
+
+            <NotAuthorized>
+
+                <li class="nav-separator">
+                </li>
+
+
+                <li class="nav-item px-3">
+
+                    <NavLink class="nav-link"
+                             href="iniciar-sesion">
+
+                        🔐 Iniciar sesión
+
+                    </NavLink>
+
+                </li>
+
+
+                <li class="nav-item px-3">
+
+                    <NavLink class="nav-link"
+                             href="registrarse">
+
+                        📝 Registrarse
+
+                    </NavLink>
+
+                </li>
+
+            </NotAuthorized>
+
+        </AuthorizeView>
+
+    </ul>
+
+</nav>

@@ -1,0 +1,36 @@
+.turno-formulario {
+    padding: 1rem;
+    border: 1px solid var(--borde);
+    border-radius: 12px;
+    background: var(--card);
+}
+
+fieldset {
+    border: 0;
+    margin: 0;
+    padding: 0;
+}
+
+.acciones-formulario {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin-top: 1rem;
+}
+
+::deep .validation-message {
+    display: block;
+    margin-top: .25rem;
+    color: #dc3545;
+    font-size: .875rem;
+}
+
+@media (max-width: 575.98px) {
+    .acciones-formulario {
+        flex-direction: column;
+    }
+
+    .acciones-formulario ::deep button {
+        width: 100%;
+    }
+}

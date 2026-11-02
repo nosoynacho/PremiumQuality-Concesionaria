@@ -1,0 +1,862 @@
+@page "/modelos"
+@rendermode InteractiveServer
+@using blazornacho.Models
+@using blazornacho.Services
+@using System.Text.RegularExpressions
+@inject VehiculoService VehiculoService
+@inject IJSRuntime JS
+
+<section aria-labelledby="titulo-modelos">
+
+    <h2 id="titulo-modelos">
+        Autos Destacados
+    </h2>
+
+    <section class="container-fluid px-0 mb-3"
+             aria-label="Filtros de vehículos">
+
+        <div class="row g-2">
+
+            <div class="col-12 col-lg-6">
+                <input class="form-control"
+                       type="text"
+                       placeholder="Buscar por marca o modelo..."
+                       @bind="textoBusqueda"
+                       @bind:event="oninput" />
+            </div>
+
+            <div class="col-12 col-sm-6 col-lg-3">
+                <select class="form-select"
+                        @bind="marcaFiltro">
+
+                    <option value="">Todas las marcas</option>
+                    <option value="Ford">Ford</option>
+                    <option value="Volkswagen">Volkswagen</option>
+                    <option value="Fiat">Fiat</option>
+                    <option value="Toyota">Toyota</option>
+                    <option value="Chevrolet">Chevrolet</option>
+
+                </select>
+            </div>
+
+            <div class="col-12 col-sm-6 col-lg-3">
+                <select class="form-select"
+                        @bind="anioFiltro">
+
+                    <option value="">Todos los años</option>
+                    <option value="2025">2025</option>
+                    <option value="2024">2024</option>
+                    <option value="2023">2023</option>
+
+                </select>
+            </div>
+
+        </div>
+
+    </section>
+
+@if (historialAutosVistos.Any())
+{
+    <aside class="history-box"
+           aria-labelledby="titulo-historial">
+
+        <h3 id="titulo-historial">
+            Historial de autos vistos
+        </h3>
+
+        <div class="history-list">
+
+            @foreach (var auto in historialAutosVistos)
+            {
+                <button type="button"
+                        @onclick="() => VerDetalle(auto.Id)">
+                    @auto.Marca @auto.Modelo
+                </button>
+
+                <button type="button"
+                        aria-label="Quitar del historial"
+                        @onclick="() => QuitarDelHistorial(auto.Id)">
+                    ❌
+                </button>
+            }
+
+        </div>
+
+    </aside>
+}
+
+<div class="sort-bar">
+    <button type="button" @onclick="OrdenarPrecioMenorMayor">Precio ↓</button>
+    <button type="button" @onclick="OrdenarPrecioMayorMenor">Precio ↑</button>
+</div>
+
+<div class="compare-bar">
+    <span>Autos seleccionados para comparar: @vehiculosComparar.Count mín. 2, máx. 3</span>
+
+    <button type="button"
+            disabled="@(vehiculosComparar.Count < 2 || vehiculosComparar.Count > 3)"
+            @onclick="MostrarComparacion">
+        Comparar seleccionados
+    </button>
+</div>
+
+<section class="container-fluid px-0"
+         aria-label="Catálogo de vehículos">
+
+    <div class="row g-4 justify-content-center align-items-start">
+
+        @foreach (var auto in VehiculosFiltrados)
+        {
+            <article class="col-12 col-sm-6 col-lg-4 col-xl-3 d-flex align-items-start">
+
+                <div class="auto-card is-visible w-100">
+
+                    <!-- IMAGEN -->
+                    <img src="@auto.Imagen"
+                         alt="@auto.Marca @auto.Modelo"
+                         title="Ver detalles de @auto.Marca @auto.Modelo"
+                         @onclick="() => VerDetalle(auto.Id)" />
+
+                    <!-- NOMBRE + COMPARAR -->
+                    <div class="auto-top">
+
+                        <p>
+                            @auto.Marca @auto.Modelo
+                        </p>
+
+                        <label>
+                            <input type="checkbox"
+                                   checked="@vehiculosComparar.Contains(auto.Id)"
+                                   @onchange="(e) => SeleccionarComparacion(auto.Id, e)" />
+
+                            Comparar
+                        </label>
+
+                    </div>
+
+                    <!-- DETALLES DEL AUTO -->
+                    @if (autoSeleccionado == auto.Id)
+                    {
+                        <div class="auto-details is-open">
+
+                            <div class="specs">
+
+                                <div class="item">
+                                    <b>Marca:</b>
+                                    @auto.Marca
+                                </div>
+
+                                <div class="item">
+                                    <b>Modelo:</b>
+                                    @auto.Modelo
+                                </div>
+
+                                <div class="item">
+                                    <b>Año:</b>
+                                    @auto.Anio
+                                </div>
+
+                                <div class="item">
+                                    <b>Segmento:</b>
+                                    @auto.Segmento
+                                </div>
+
+                                <div class="item">
+                                    <b>Motor:</b>
+                                    @auto.Motor
+                                </div>
+
+                                <div class="item">
+                                    <b>Potencia:</b>
+                                    @auto.Potencia
+                                </div>
+
+                                <div class="item">
+                                    <b>Transmisión:</b>
+                                    @auto.Transmision
+                                </div>
+
+                                <div class="item">
+                                    <b>Tracción:</b>
+                                    @auto.Traccion
+                                </div>
+
+                                <div class="item">
+                                    <b>Asientos:</b>
+                                    @auto.Asientos
+                                </div>
+
+                                <div class="item">
+                                    <b>Color:</b>
+                                    @auto.Color
+                                </div>
+
+                                <div class="item">
+                                    <b>Precio:</b>
+                                    $@auto.Precio.ToString("N0") ARS
+                                </div>
+
+                            </div>
+
+                            <div class="recomendados">
+
+                                <strong>
+                                    Autos similares que podrían interesarte:
+                                </strong>
+
+                                @foreach (var recomendado in ObtenerAutosSimilares(auto))
+                                {
+                                    <button type="button"
+                                            @onclick="() => VerDetalle(recomendado.Id)">
+
+                                        @recomendado.Marca @recomendado.Modelo
+
+                                    </button>
+                                }
+
+                            </div>
+
+                        </div>
+                    }
+
+                    <!-- COMPRAR -->
+                    <button type="button"
+                            class="buy-btn"
+                            @onclick="() => Comprar(auto)">
+
+                        Comprar
+
+                    </button>
+
+                </div>
+
+            </article>
+        }
+
+    </div>
+
+</section>
+
+</section>
+
+
+@if (mostrarComparacion)
+{
+    <div class="checkout-modal is-open">
+        <div class="checkout-modal__content">
+            <div class="checkout-modal__header">
+                <h3 class="checkout-modal__title">Comparar vehículos</h3>
+                <button type="button" class="checkout-modal__close" @onclick="CerrarComparacion">×</button>
+            </div>
+
+            <table class="compare-modal__table">
+                <thead>
+                    <tr>
+                        <th>Dato</th>
+                        @foreach (var auto in AutosComparados)
+                        {
+                            <th>@auto.Marca @auto.Modelo</th>
+                        }
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <tr>
+                        <th>Año</th>
+                        @foreach (var auto in AutosComparados)
+                        {
+                            <td>@auto.Anio</td>
+                        }
+                    </tr>
+
+                    <tr>
+                        <th>Segmento</th>
+                        @foreach (var auto in AutosComparados)
+                        {
+                            <td>@auto.Segmento</td>
+                        }
+                    </tr>
+
+                    <tr>
+                        <th>Motor</th>
+                        @foreach (var auto in AutosComparados)
+                        {
+                            <td>@auto.Motor</td>
+                        }
+                    </tr>
+
+                    <tr>
+                        <th>Potencia</th>
+                        @foreach (var auto in AutosComparados)
+                        {
+                            <td>@auto.Potencia</td>
+                        }
+                    </tr>
+
+                    <tr>
+                        <th>Transmisión</th>
+                        @foreach (var auto in AutosComparados)
+                        {
+                            <td>@auto.Transmision</td>
+                        }
+                    </tr>
+
+                    <tr>
+                        <th>Tracción</th>
+                        @foreach (var auto in AutosComparados)
+                        {
+                            <td>@auto.Traccion</td>
+                        }
+                    </tr>
+
+                    <tr>
+                        <th>Asientos</th>
+                        @foreach (var auto in AutosComparados)
+                        {
+                            <td>@auto.Asientos</td>
+                        }
+                    </tr>
+
+                    <tr>
+                        <th>Color</th>
+                        @foreach (var auto in AutosComparados)
+                        {
+                            <td>@auto.Color</td>
+                        }
+                    </tr>
+
+                    <tr>
+                        <th>Precio</th>
+                        @foreach (var auto in AutosComparados)
+                        {
+                            <td>$@auto.Precio.ToString("N0") ARS</td>
+                        }
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="checkout-modal__backdrop" @onclick="CerrarComparacion"></div>
+    </div>
+}
+
+@if (mostrarCompra && vehiculoCompra != null)
+{
+    <div class="checkout-modal is-open">
+        <div class="checkout-modal__content">
+            <div class="checkout-modal__header">
+                <h3 class="checkout-modal__title">
+                    Comprar: @vehiculoCompra.Marca @vehiculoCompra.Modelo
+                </h3>
+
+                <button type="button" class="checkout-modal__close" @onclick="CerrarCompra">×</button>
+            </div>
+
+            <div class="checkout-summary">
+                <div class="item"><b>Marca:</b> @vehiculoCompra.Marca</div>
+                <div class="item"><b>Modelo:</b> @vehiculoCompra.Modelo</div>
+                <div class="item"><b>Precio:</b> $@vehiculoCompra.Precio.ToString("N0") ARS</div>
+                <div class="item"><b>ID:</b> @vehiculoCompra.Id.ToUpper()</div>
+            </div>
+
+            <div class="cuotas-info">
+                Total estimado: $@TotalEstimado.ToString("N0") ARS —
+                @cuotas cuota(s) de $@ValorCuota.ToString("N0") ARS
+                (interés aprox. @PorcentajeInteres%).
+            </div>
+            @if (!string.IsNullOrWhiteSpace(errorCompra))
+             {
+            <div class="error-text show compra-error">
+             @errorCompra
+              </div>
+             }
+
+            <div class="checkout-form">
+                <input class="full"
+                       type="text"
+                       placeholder="Nombre y Apellido"
+                       @bind="nombreComprador" />
+
+                <input class="full"
+                       type="email"
+                       placeholder="Email"
+                       @bind="emailComprador" />
+
+                <input type="text"
+                       placeholder="DNI"
+                       @bind="dniComprador" />
+
+                <select @bind="metodoPago">
+                    <option value="">Método de pago</option>
+                    <option value="tarjeta">Tarjeta de crédito</option>
+                    <option value="debito">Tarjeta de débito</option>
+                    <option value="transferencia">Transferencia</option>
+                    <option value="mercadopago">Mercado Pago</option>
+                    <option value="cuenta_dni">Cuenta DNI</option>
+                </select>
+
+                @if (metodoPago == "tarjeta" || metodoPago == "debito")
+                {
+                    <input type="text"
+                           placeholder="Número de tarjeta"
+                           @bind="numeroTarjeta" />
+
+                    <input type="text"
+                           placeholder="Vencimiento (MM/AA)"
+                           @bind="vencimiento" />
+
+                    <input type="password"
+                           placeholder="CVV"
+                           @bind="cvv" />
+                }
+
+                @if (metodoPago == "mercadopago" || metodoPago == "cuenta_dni")
+                {
+                    <input class="full"
+                           type="text"
+                           placeholder="Alias (Mercado Pago / Cuenta DNI)"
+                           @bind="aliasWallet" />
+                }
+
+                <select class="full" @bind="cuotas">
+                    <option value="1">1 pago</option>
+                    <option value="3">3 cuotas</option>
+                    <option value="6">6 cuotas</option>
+                    <option value="12">12 cuotas</option>
+                </select>
+
+                <div class="checkout-actions full">
+                    <button type="button" class="btn-outline" @onclick="CerrarCompra">
+                        Cancelar
+                    </button>
+
+                    <button type="button" class="btn-outline" @onclick="MostrarDatosFiscales">
+                        Datos fiscales
+                    </button>
+
+                    <button type="button" class="btn-primary" @onclick="ConfirmarCompra">
+                        Confirmar compra
+                    </button>
+                   
+                </div>
+            </div>
+        </div>
+
+        <div class="checkout-modal__backdrop" @onclick="CerrarCompra"></div>
+    </div>
+}
+
+@if (mostrarDatosFiscales)
+{
+    <div class="checkout-modal is-open">
+        <div class="checkout-modal__content datos-fiscales-modal">
+            <div class="checkout-modal__header">
+                <h3 class="checkout-modal__title">
+                    Datos para pago/transferencia
+                </h3>
+
+                <button type="button" class="checkout-modal__close" @onclick="CerrarDatosFiscales">
+                    ×
+                </button>
+            </div>
+
+            <div id="datosTransfer" class="bank-box full">
+                <div class="row">
+                    <div class="label">Titular</div>
+                    <div class="value">Premium Quality S.R.L.</div>
+                    <button type="button" class="copy-btn" @onclick='() => CopiarTexto("Premium Quality S.R.L.")'>
+                        Copiar
+                    </button>
+                </div>
+
+                <div class="row">
+                    <div class="label">CBU / CVU</div>
+                    <div class="value">0000003100001234567891</div>
+                    <button type="button" class="copy-btn" @onclick='() => CopiarTexto("0000003100001234567891")'>
+                        Copiar CBU
+                    </button>
+                </div>
+
+                <div class="row">
+                    <div class="label">Alias</div>
+                    <div class="value">premium.quality.autos</div>
+                    <button type="button" class="copy-btn" @onclick='() => CopiarTexto("premium.quality.autos")'>
+                        Copiar Alias
+                    </button>
+                </div>
+
+                <div class="row">
+                    <div class="label">CUIT</div>
+                    <div class="value">30-71234567-9</div>
+                    <button type="button" class="copy-btn" @onclick='() => CopiarTexto("30-71234567-9")'>
+                        Copiar CUIT
+                    </button>
+                </div>
+            </div>
+
+            <div class="checkout-actions full">
+                <button type="button" class="btn-primary" @onclick="CerrarDatosFiscales">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+
+        <div class="checkout-modal__backdrop" @onclick="CerrarDatosFiscales"></div>
+    </div>
+}
+
+@if (!string.IsNullOrWhiteSpace(mensajeCompra))
+{
+    <div class="toast show">@mensajeCompra</div>
+}
+
+@code {
+    private List<Vehiculo> vehiculos = new();
+
+    private string textoBusqueda = "";
+    private string marcaFiltro = "";
+    private string anioFiltro = "";
+
+    private string? autoSeleccionado;
+    private List<string> vehiculosComparar = new();
+
+    private bool mostrarComparacion = false;
+
+    private Vehiculo? vehiculoCompra;
+    private bool mostrarCompra = false;
+    private string mensajeCompra = "";
+    private string errorCompra = "";
+
+
+    private bool mostrarDatosFiscales = false;
+    private void MostrarDatosFiscales()
+    {
+     mostrarDatosFiscales = true;
+    }
+   private void CerrarDatosFiscales()
+   {
+     mostrarDatosFiscales = false;
+   }
+
+
+    private string nombreComprador = "";
+    private string emailComprador = "";
+    private string dniComprador = "";
+    private string metodoPago = "";
+    private string numeroTarjeta = "";
+    private string vencimiento = "";
+    private string cvv = "";
+    private string aliasWallet = "";
+    private int cuotas = 1;
+
+    private List<Vehiculo> historialAutosVistos = new();
+
+    protected override void OnInitialized()
+    {
+        vehiculos = VehiculoService.ObtenerTodos();
+    }
+
+    private IEnumerable<Vehiculo> VehiculosFiltrados =>
+        vehiculos.Where(v =>
+            (string.IsNullOrWhiteSpace(textoBusqueda) ||
+             $"{v.Marca} {v.Modelo}".Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase))
+            &&
+            (string.IsNullOrWhiteSpace(marcaFiltro) || v.Marca == marcaFiltro)
+            &&
+            (string.IsNullOrWhiteSpace(anioFiltro) || v.Anio == anioFiltro)
+        );
+
+    private List<Vehiculo> AutosComparados =>
+        vehiculos.Where(v => vehiculosComparar.Contains(v.Id)).ToList();
+
+    private int PorcentajeInteres =>
+        cuotas switch
+        {
+            3 => 10,
+            6 => 20,
+            12 => 35,
+            _ => 0
+        };
+
+    private decimal TotalEstimado
+    {
+        get
+        {
+            if (vehiculoCompra == null)
+            {
+                return 0;
+            }
+
+            decimal interes = PorcentajeInteres / 100m;
+            return vehiculoCompra.Precio * (1 + interes);
+        }
+    }
+
+    private decimal ValorCuota
+    {
+        get
+        {
+            if (cuotas <= 0)
+            {
+                return 0;
+            }
+
+            return TotalEstimado / cuotas;
+        }
+    }
+
+    private void VerDetalle(string id)
+    {
+        autoSeleccionado = autoSeleccionado == id ? null : id;
+
+        if (autoSeleccionado != null)
+        {
+            RegistrarAutoVisto(id);
+        }
+    }
+
+    private void RegistrarAutoVisto(string id)
+    {
+        Vehiculo? auto = vehiculos.FirstOrDefault(v => v.Id == id);
+
+        if (auto == null)
+        {
+            return;
+        }
+
+        historialAutosVistos.RemoveAll(v => v.Id == id);
+        historialAutosVistos.Insert(0, auto);
+
+        if (historialAutosVistos.Count > 5)
+        {
+            historialAutosVistos = historialAutosVistos.Take(5).ToList();
+        }
+    }
+
+    private void QuitarDelHistorial(string id)
+    {
+        historialAutosVistos.RemoveAll(v => v.Id == id);
+    }
+
+    private void OrdenarPrecioMenorMayor()
+    {
+        vehiculos = vehiculos.OrderBy(v => v.Precio).ToList();
+    }
+
+    private void OrdenarPrecioMayorMenor()
+    {
+        vehiculos = vehiculos.OrderByDescending(v => v.Precio).ToList();
+    }
+
+    private void SeleccionarComparacion(string id, ChangeEventArgs e)
+    {
+        bool seleccionado = e.Value is bool valor && valor;
+
+        if (seleccionado)
+        {
+            if (vehiculosComparar.Count >= 3)
+            {
+                mensajeCompra = "Solo podés comparar hasta 3 vehículos a la vez.";
+                return;
+            }
+
+            if (!vehiculosComparar.Contains(id))
+            {
+                vehiculosComparar.Add(id);
+            }
+        }
+        else
+        {
+            vehiculosComparar.Remove(id);
+        }
+    }
+
+    private void MostrarComparacion()
+    {
+        if (vehiculosComparar.Count >= 2 && vehiculosComparar.Count <= 3)
+        {
+            mostrarComparacion = true;
+        }
+    }
+
+    private void CerrarComparacion()
+    {
+        mostrarComparacion = false;
+    }
+
+    private List<Vehiculo> ObtenerAutosSimilares(Vehiculo autoBase)
+    {
+        return vehiculos
+            .Where(v => v.Id != autoBase.Id)
+            .Select(v => new
+            {
+                Vehiculo = v,
+                Puntaje =
+                    (v.Marca == autoBase.Marca ? 50 : 0) +
+                    (v.Segmento == autoBase.Segmento ? 30 : 0) +
+                    Math.Max(0, 50 - (int)(Math.Abs(v.Precio - autoBase.Precio) / 2000000))
+            })
+            .OrderByDescending(x => x.Puntaje)
+            .Take(3)
+            .Select(x => x.Vehiculo)
+            .ToList();
+    }
+
+    private void Comprar(Vehiculo auto)
+    {
+        vehiculoCompra = auto;
+        mostrarCompra = true;
+        mensajeCompra = "";
+
+        nombreComprador = "";
+        emailComprador = "";
+        dniComprador = "";
+        metodoPago = "";
+        numeroTarjeta = "";
+        vencimiento = "";
+        cvv = "";
+        aliasWallet = "";
+        cuotas = 1;
+        errorCompra = "";
+
+        mostrarDatosFiscales = false;
+    }
+    /*
+    private string DatosFiscales()
+    { 
+      return "Titular: \"PremiumQualityS.R.L.\"";  
+      return "CBU: 0000003100001234567891";
+      return "Alias: premium.quality.autos";
+      return "CUIT: 30-71234567-9";
+    }
+    */
+    private void CerrarCompra()
+    {
+        mostrarCompra = false;
+        mostrarDatosFiscales = false;
+        vehiculoCompra = null;
+        errorCompra = "";
+    }
+
+    private bool ValidarCompra()
+{
+    errorCompra = "";
+
+    string nombre = nombreComprador.Trim();
+    string email = emailComprador.Trim();
+    string dni = dniComprador.Trim();
+    string metodo = metodoPago.Trim();
+    string tarjeta = numeroTarjeta.Trim();
+    string vto = vencimiento.Trim();
+    string codigoCvv = cvv.Trim();
+    string alias = aliasWallet.Trim();
+
+    if (!Regex.IsMatch(nombre, @"^[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s]{2,80}$"))
+    {
+        errorCompra = "El nombre debe contener solo letras y espacios.";
+        return false;
+    }
+
+    if (!Regex.IsMatch(email, @"^[\w\.-]+@[\w\.-]+\.[a-zA-Z]{2,}$"))
+    {
+        errorCompra = "Ingresá un correo electrónico válido. Ejemplo: usuario@gmail.com";
+        return false;
+    }
+
+    if (!Regex.IsMatch(dni, @"^\d{7,8}$"))
+    {
+        errorCompra = "El DNI debe tener 7 u 8 números, sin puntos ni espacios ni letras.";
+        return false;
+    }
+
+    if (!Regex.IsMatch(metodo, @"^(tarjeta|debito|transferencia|mercadopago|cuenta_dni)$"))
+    {
+        errorCompra = "Seleccioná un método de pago válido.";
+        return false;
+    }
+
+    if (metodo == "tarjeta" || metodo == "debito")
+    {
+        string tarjetaSinEspacios = tarjeta.Replace(" ", "").Replace("-", "");
+
+        if (!Regex.IsMatch(tarjeta, @"^(\d{4}[\s-]?){3}\d{4}$"))
+        {
+            errorCompra = "El número de tarjeta debe tener 16 dígitos. Puede escribirse junto, con espacios o con guiones y sin letras.";
+            return false;
+        }
+
+        if (!Regex.IsMatch(vto, @"^(0[1-9]|1[0-2])\/\d{2}$"))
+        {
+            errorCompra = "El vencimiento debe tener formato MM/AA. Ejemplo: 08/27";
+            return false;
+        }
+
+        if (!Regex.IsMatch(codigoCvv, @"^\d{3,4}$"))
+        {
+            errorCompra = "El CVV debe tener 3 o 4 números.";
+            return false;
+        }
+    }
+
+    if (metodo == "mercadopago" || metodo == "cuenta_dni")
+    {
+        if (!Regex.IsMatch(alias, @"^[a-zA-Z0-9._-]{3,30}$"))
+        {
+            errorCompra = "El alias debe tener entre 3 y 30 caracteres. Puede usar letras, números, punto, guion o guion bajo.";
+            return false;
+        }
+    }
+
+    return true;
+}
+
+
+    private void ConfirmarCompra()
+    {
+        if (vehiculoCompra == null)
+        {
+            return;
+        }
+
+        if (!ValidarCompra())
+        {
+           return;
+        }
+
+        if (string.IsNullOrWhiteSpace(nombreComprador) ||
+            string.IsNullOrWhiteSpace(emailComprador) ||
+            string.IsNullOrWhiteSpace(dniComprador) ||
+            string.IsNullOrWhiteSpace(metodoPago))
+        {
+            mensajeCompra = "Completá nombre, email, DNI y método de pago antes de confirmar.";
+            return;
+        }
+
+        if ((metodoPago == "tarjeta" || metodoPago == "debito") &&
+            (string.IsNullOrWhiteSpace(numeroTarjeta) ||
+             string.IsNullOrWhiteSpace(vencimiento) ||
+             string.IsNullOrWhiteSpace(cvv)))
+        {
+            mensajeCompra = "Completá los datos de la tarjeta.";
+            return;
+        }
+
+        if ((metodoPago == "mercadopago" || metodoPago == "cuenta_dni") &&
+            string.IsNullOrWhiteSpace(aliasWallet))
+        {
+            mensajeCompra = "Ingresá el alias de Mercado Pago o Cuenta DNI.";
+            return;
+        }
+
+        mensajeCompra = $"¡Compra confirmada del vehículo! {vehiculoCompra.Marca} {vehiculoCompra.Modelo}. Serás contactado por mail cuando recibas tu comprobante de pago.";
+
+        mostrarCompra = false;
+        vehiculoCompra = null;
+    }
+
+    private async Task CopiarTexto(string texto)
+    {
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", texto);
+        mensajeCompra = "Dato copiado al portapapeles.";
+    }
+}

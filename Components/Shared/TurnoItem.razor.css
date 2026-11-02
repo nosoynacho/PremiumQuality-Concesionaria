@@ -1,0 +1,21 @@
+.turno-card {
+    margin: 1rem 0;
+    padding: 1rem;
+
+    border: 1px solid var(--borde);
+    border-left: 5px solid var(--azul);
+    border-radius: 10px;
+
+    background: var(--card);
+    color: var(--texto);
+}
+
+.turno-card:hover {
+    box-shadow: 0 5px 14px rgba(0, 0, 0, .12);
+}
+
+@media (max-width: 575.98px) {
+    .turno-card {
+        padding: .75rem;
+    }
+}

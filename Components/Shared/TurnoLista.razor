@@ -1,0 +1,37 @@
+@using blazornacho.Models
+
+@if (Turnos.Count == 0)
+{
+    <p>No hay turnos reservados.</p>
+}
+else
+{
+    @foreach (Turno turno in Turnos)
+    {
+        <TurnoItem Turno="turno"
+                   OnEditar="Editar"
+                   OnEliminar="Eliminar" />
+    }
+}
+
+@code {
+    [Parameter]
+    public IReadOnlyList<Turno> Turnos { get; set; }
+        = Array.Empty<Turno>();
+
+    [Parameter]
+    public EventCallback<long> OnEditar { get; set; }
+
+    [Parameter]
+    public EventCallback<long> OnEliminar { get; set; }
+
+    private Task Editar(long id)
+    {
+        return OnEditar.InvokeAsync(id);
+    }
+
+    private Task Eliminar(long id)
+    {
+        return OnEliminar.InvokeAsync(id);
+    }
+}

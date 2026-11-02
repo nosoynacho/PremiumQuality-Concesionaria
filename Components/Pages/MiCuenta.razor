@@ -1,0 +1,158 @@
+@page "/mi-cuenta"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@inject UsuarioService UsuarioService
+
+<PageTitle>
+    Mi cuenta - Premium Quality
+</PageTitle>
+
+<section class="auth-page">
+
+    <div class="auth-card">
+
+        <header class="auth-card__header">
+
+            <h2>
+                Mi cuenta
+            </h2>
+
+            <p>
+                Información de tu usuario
+                de Premium Quality.
+            </p>
+
+        </header>
+
+        @if (Registro == "ok")
+        {
+            <div class="auth-alert auth-alert--success">
+
+                Cuenta creada correctamente.
+                Tu sesión quedó iniciada.
+
+            </div>
+        }
+
+        @if (!cargaFinalizada)
+        {
+            <p>
+                Cargando información...
+            </p>
+        }
+        else if (usuario is null)
+        {
+            <div class="auth-alert auth-alert--error">
+
+                No se pudo encontrar la cuenta.
+
+            </div>
+        }
+        else
+        {
+            <dl class="account-data">
+
+                <div>
+                    <dt>Nombre</dt>
+                    <dd>
+                        @usuario.NombreCompleto
+                    </dd>
+                </div>
+
+                <div>
+                    <dt>Correo</dt>
+                    <dd>
+                        @usuario.Correo
+                    </dd>
+                </div>
+
+                
+                <div>
+                    <dt>
+                        Fecha de registro
+                    </dt>
+                
+                    <dd>
+                        @(usuario.FechaRegistro.ToString("dd/MM/yyyy HH:mm"))
+                  </dd>
+                </div>
+
+
+                <div>
+                    <dt>Estado</dt>
+
+                    <dd>
+                        @(usuario.Activo
+                            ? "Cuenta activa"
+                            : "Cuenta inactiva")
+                    </dd>
+                </div>
+
+            </dl>
+
+            <form method="post"
+                  action="/auth/logout"
+                  class="auth-form">
+
+                <AntiforgeryToken />
+
+                <button type="submit"
+                        class="auth-danger-button">
+
+                    Cerrar sesión
+
+                </button>
+
+            </form>
+        }
+
+    </div>
+
+</section>
+
+@code
+{
+    [CascadingParameter]
+    private Task<AuthenticationState>
+        AuthenticationStateTask
+        { get; set; } = default!;
+
+
+    [SupplyParameterFromQuery(
+        Name = "registro"
+    )]
+    public string? Registro { get; set; }
+
+
+    private Usuario? usuario;
+
+    private bool cargaFinalizada;
+
+
+    protected override async Task
+        OnInitializedAsync()
+    {
+        AuthenticationState authState =
+            await AuthenticationStateTask;
+
+        string? idTexto =
+            authState.User.FindFirst(
+                System.Security.Claims
+                    .ClaimTypes.NameIdentifier
+            )?.Value;
+
+        if (long.TryParse(
+                idTexto,
+                out long usuarioId))
+        {
+            usuario =
+                UsuarioService
+                    .ObtenerPorId(
+                        usuarioId
+                    );
+        }
+
+        cargaFinalizada = true;
+    }
+}

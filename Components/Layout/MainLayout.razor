@@ -1,0 +1,43 @@
+﻿@inherits LayoutComponentBase
+
+<header class="header fade-in">
+    <img class="logo"
+         src="img/premiun cuality.png"
+         alt="Premium Quality Logo" />
+
+    <div class="titulo">
+
+    <h1>
+        Premium Quality Concesionaria
+    </h1>
+
+    <p>
+        Autos destacados, seguros y atención personalizada
+    </p>
+
+   </div>
+
+    <div class="header-actions">
+        <ThemeToggle />
+    </div>
+</header>
+
+<div class="page">
+
+    <aside class="sidebar" aria-label="Menú lateral">
+        <NavMenu />
+    </aside>
+
+    <main id="contenido-principal">
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+
+ </div>
+
+<footer>
+    © 2026 Premium Quality Concesionaria - Todos los derechos reservados
+</footer>
+
+<Chatbot />

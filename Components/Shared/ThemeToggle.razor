@@ -1,0 +1,150 @@
+@rendermode InteractiveServer
+@implements IAsyncDisposable
+
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+
+<button type="button"
+        class="theme-toggle"
+        @onclick="CambiarTema">
+    @textoBoton
+</button>
+
+@code {
+    private IJSObjectReference? moduloTema;
+
+    private bool esOscuro = false;
+
+    private bool componenteCerrado = false;
+
+    private string textoBoton =
+        "🌙 Modo oscuro";
+
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged +=
+            AlCambiarPagina;
+    }
+
+    protected override async Task OnAfterRenderAsync(
+        bool firstRender)
+    {
+        if (!firstRender || componenteCerrado)
+        {
+            return;
+        }
+
+        try
+        {
+            moduloTema =
+                await JS.InvokeAsync<IJSObjectReference>(
+                    "import",
+                    "./dark-mode.js"
+                );
+
+            esOscuro =
+                await moduloTema.InvokeAsync<bool>(
+                    "aplicarTemaGuardado"
+                );
+
+            ActualizarTexto();
+
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (TaskCanceledException)
+        {
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+    }
+
+    private async Task CambiarTema()
+    {
+        if (moduloTema is null ||
+            componenteCerrado)
+        {
+            return;
+        }
+        //demuestra JS Interop mediante el módulo
+        try
+        {
+            esOscuro =
+                await moduloTema.InvokeAsync<bool>(
+                    "cambiarTema"
+                );
+
+            ActualizarTexto();
+        }
+        catch (TaskCanceledException)
+        {
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+    }
+
+    private void AlCambiarPagina(
+        object? sender,
+        Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        _ = AplicarTemaDespuesDeNavegar();
+    }
+
+    private async Task AplicarTemaDespuesDeNavegar()
+    {
+        try
+        {
+            await Task.Delay(50);
+
+            if (moduloTema is null ||
+                componenteCerrado)
+            {
+                return;
+            }
+
+            await moduloTema.InvokeVoidAsync(
+                "forzarTema",
+                esOscuro
+            );
+        }
+        catch (TaskCanceledException)
+        {
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+    }
+
+    private void ActualizarTexto()
+    {
+        textoBoton = esOscuro
+            ? "☀ Modo claro"
+            : "🌙 Modo oscuro";
+    }
+    //demuestra exactamente el requisito de DisposeAsync.
+    public async ValueTask DisposeAsync()
+    {
+        componenteCerrado = true;
+
+        Navigation.LocationChanged -=
+            AlCambiarPagina;
+
+        if (moduloTema is not null)
+        {
+            try
+            {
+                await moduloTema.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+            }
+            catch (TaskCanceledException)
+            {
+            }
+        }
+    }
+}

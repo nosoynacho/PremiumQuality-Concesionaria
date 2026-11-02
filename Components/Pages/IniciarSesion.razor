@@ -1,0 +1,132 @@
+@page "/iniciar-sesion"
+
+<PageTitle>
+    Iniciar sesión - Premium Quality
+</PageTitle>
+
+<section class="auth-page"
+         aria-labelledby="titulo-login">
+
+    <div class="auth-card">
+
+        <header class="auth-card__header">
+
+            <h2 id="titulo-login">
+                Iniciar sesión
+            </h2>
+
+            <p>
+                Ingresá con el correo y la
+                contraseña de tu cuenta.
+            </p>
+
+        </header>
+
+        @if (!string.IsNullOrWhiteSpace(Mensaje))
+        {
+            <div class="auth-alert auth-alert--success">
+                @Mensaje
+            </div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Error))
+        {
+            <div class="auth-alert auth-alert--error">
+                @Error
+            </div>
+        }
+
+        <form method="post"
+              action="/auth/login"
+              class="auth-form">
+
+            <AntiforgeryToken />
+
+            <input type="hidden"
+                   name="ReturnUrl"
+                   value="@ReturnUrlSeguro" />
+
+            <div class="auth-field">
+
+                <label for="login-correo">
+                    Correo electrónico
+                </label>
+
+                <input id="login-correo"
+                       name="Correo"
+                       type="email"
+                       autocomplete="email"
+                       maxlength="150"
+                       required
+                       placeholder="nombre@correo.com" />
+
+            </div>
+
+            <div class="auth-field">
+
+                <label for="login-password">
+                    Contraseña
+                </label>
+
+                <input id="login-password"
+                       name="Password"
+                       type="password"
+                       autocomplete="current-password"
+                       required
+                       placeholder="Tu contraseña" />
+
+            </div>
+
+            <button type="submit"
+                    class="auth-primary-button">
+
+                Iniciar sesión
+
+            </button>
+
+        </form>
+
+        <nav class="auth-links">
+
+            <a href="/recuperar-password">
+                ¿Olvidaste tu contraseña?
+            </a>
+
+            <span>
+                ¿No tenés una cuenta?
+                <a href="/registrarse">
+                    Registrarse
+                </a>
+            </span>
+
+        </nav>
+
+    </div>
+
+</section>
+
+@code
+{
+    [SupplyParameterFromQuery(
+        Name = "error"
+    )]
+    public string? Error { get; set; }
+
+    [SupplyParameterFromQuery(
+        Name = "mensaje"
+    )]
+    public string? Mensaje { get; set; }
+
+    [SupplyParameterFromQuery(
+        Name = "returnUrl"
+    )]
+    public string? ReturnUrl { get; set; }
+
+    private string ReturnUrlSeguro =>
+        !string.IsNullOrWhiteSpace(
+            ReturnUrl
+        ) &&
+        ReturnUrl.StartsWith('/')
+            ? ReturnUrl
+            : "/";
+}

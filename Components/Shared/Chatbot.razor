@@ -1,0 +1,247 @@
+@rendermode InteractiveServer
+
+@using blazornacho.Models
+@using blazornacho.Services
+
+@inject ChatbotService ChatbotService
+@inject NavigationManager Navigation
+
+<button type="button"
+        class="chatbot-toggle"
+        @onclick="AbrirChatbot">
+
+    <img src="img/chatbot-logo.png"
+         alt="Chatbot"
+         class="chatbot-toggle-img" />
+
+</button>
+
+@if (chatAbierto)
+{
+    <div class="chatbot-panel">
+
+        <div class="chatbot-header">
+
+            <div>
+                <strong>Asistente Premium IA</strong>
+                <br />
+                <span>
+                    ¿En qué puedo ayudarte?
+                </span>
+            </div>
+
+            <button type="button"
+                    class="chatbot-close"
+                    @onclick="CerrarChatbot">
+                ×
+            </button>
+
+        </div>
+
+        <div class="chatbot-body">
+
+            @foreach (
+                var mensaje in
+                mensajes.Where(
+                    m =>
+                        !string.IsNullOrWhiteSpace(
+                            m.Texto
+                        )
+                )
+            )
+            {
+                <div class="
+                    chatbot-message
+                    @(mensaje.Tipo == "user"
+                        ? "user"
+                        : "bot")">
+
+                    <div class="chatbot-bubble">
+                        @mensaje.Texto
+                    </div>
+
+                </div>
+            }
+
+        </div>
+
+        <EditForm Model="this"
+                  FormName="formChatbot"
+                  OnSubmit="EnviarMensaje"
+                  class="chatbot-input">
+
+            <input type="text"
+                   placeholder="Preguntá sobre la concesionaria..."
+                   autocomplete="off"
+                   disabled="@procesando"
+                   @bind="mensajeUsuario"
+                   @bind:event="oninput" />
+
+            <button type="submit"
+                    disabled="@procesando">
+
+                Enviar
+
+            </button>
+
+        </EditForm>
+
+    </div>
+}
+
+@code
+{
+    private bool chatAbierto;
+
+    private bool procesando;
+
+    private string mensajeUsuario = "";
+
+    private List<ChatMessage> mensajes = new();
+
+    protected override void OnInitialized()
+    {
+        mensajes =
+            ChatbotService.ObtenerMensajes();
+    }
+
+    private void AbrirChatbot()
+    {
+        chatAbierto = true;
+    }
+
+    private void CerrarChatbot()
+    {
+        chatAbierto = false;
+    }
+
+    private async Task EnviarMensaje()
+    {
+        if (
+            procesando ||
+            string.IsNullOrWhiteSpace(
+                mensajeUsuario
+            )
+        )
+        {
+            return;
+        }
+
+        string texto =
+            mensajeUsuario.Trim();
+
+        mensajeUsuario = "";
+
+        // ====================================
+        // 1. MOSTRAR USUARIO INMEDIATAMENTE
+        // ====================================
+
+        ChatbotService
+            .AgregarMensajeUsuario(texto);
+
+        mensajes =
+            ChatbotService.ObtenerMensajes();
+
+        await InvokeAsync(
+            StateHasChanged
+        );
+
+        // Le damos oportunidad a Blazor
+        // de pintar el mensaje antes
+        // de comenzar con Ollama.
+        await Task.Yield();
+
+        // ====================================
+        // 2. CREAR RESPUESTA VACÍA
+        // ====================================
+
+        ChatMessage respuestaBot =
+            ChatbotService
+                .CrearMensajeBotVacio();
+
+        mensajes =
+            ChatbotService.ObtenerMensajes();
+
+        procesando = true;
+
+        await InvokeAsync(
+            StateHasChanged
+        );
+
+        try
+        {
+            string rutaActual =
+                "/" +
+                Navigation
+                    .ToBaseRelativePath(
+                        Navigation.Uri
+                    );
+
+            // ====================================
+            // 3. RECIBIR TEXTO PROGRESIVAMENTE
+            // ====================================
+
+             await foreach (
+             string fragmento in
+             ChatbotService
+            .ResponderStreamAsync(
+             texto,
+             rutaActual
+            )
+           )
+            {
+             respuestaBot.Texto += fragmento;
+
+             await InvokeAsync(
+             StateHasChanged
+             );
+            }
+
+            if (
+                string.IsNullOrWhiteSpace(
+                    respuestaBot.Texto
+                )
+            )
+            {
+                respuestaBot.Texto =
+                    "No pude generar una respuesta.";
+            }
+        }
+        catch (HttpRequestException)
+        {
+            respuestaBot.Texto =
+                "No pude conectarme con Ollama. " +
+                "Verificá que la IA local esté ejecutándose.";
+        }
+        catch (TaskCanceledException ex)
+{
+        Console.WriteLine(
+        $"Comunicación con Ollama interrumpida: {ex.Message}"
+        );
+
+                 respuestaBot.Texto =
+                 "No pude completar la respuesta de la IA local. " +
+                 "Verificá que Ollama siga ejecutándose e intentá nuevamente.";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(
+                $"Error IA: {ex.Message}"
+            );
+
+            respuestaBot.Texto =
+                "Ocurrió un error al consultar la IA local.";
+        }
+        finally
+        {
+            procesando = false;
+
+            mensajes =
+                ChatbotService.ObtenerMensajes();
+
+            await InvokeAsync(
+                StateHasChanged
+            );
+        }
+    }
+}
