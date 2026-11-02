@@ -23,9 +23,18 @@ public class Resena
     public int Puntaje { get; set; } = 5;
 
 
-    [Required]
-    [MaxLength(1000)]
+    
+   [Required(
+    ErrorMessage = "Debe escribir un comentario."
+   )]
+   [StringLength(
+    1000,
+    MinimumLength = 5,
+    ErrorMessage =
+        "El comentario debe tener entre 5 y 1000 caracteres."
+    )]
     public string Comentario { get; set; } = "";
+
 
 
     public DateTime Fecha { get; set; }
