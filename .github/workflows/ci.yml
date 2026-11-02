@@ -1,0 +1,41 @@
+
+name: Premium Quality - CI .NET 10
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - "feature/**"
+
+  pull_request:
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Compilar proyecto Blazor
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v7
+
+      - name: Instalar .NET 10
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restaurar dependencias
+        run: dotnet restore ./blazornacho.csproj
+
+      - name: Compilar en Release
+        run: dotnet build ./blazornacho.csproj --configuration Release --no-restore
+
+      - name: Publicar artefactos
+        run: dotnet publish ./blazornacho.csproj --configuration Release --no-build --output "$RUNNER_TEMP/publish"
