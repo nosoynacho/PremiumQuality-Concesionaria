@@ -51,9 +51,15 @@ public class ResenaService
     }
 
 
-    public void Agregar(
-        Resena resena)
+    public void Agregar(Resena resena)
     {
+       
+        Validator.ValidateObject(
+         resena,
+         new ValidationContext(resena),
+         validateAllProperties: true
+        );
+        
         using ConcesionariaDbContext db =
             _factory.CreateDbContext();
 
