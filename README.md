@@ -217,7 +217,7 @@ sequenceDiagram
     I->>L: OnEditar.InvokeAsync(Turno.Id)
     L->>P: OnEditar.InvokeAsync(id)
     P->>P: EditarTurno(id): carga formulario
-    P->>F: Modelo=formulario; ModoEdicion=true
+    P->>F: Modelo=formulario y ModoEdicion=true
     F-->>U: Muestra los datos para editar
 ```
 
